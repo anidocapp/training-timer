@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Training</title>
+<style>
+*{box-sizing:border-box}
+body{font-family:Arial,sans-serif;background:#111;color:#fff;margin:0;padding:20px 15px 40px}
+.container{max-width:680px;margin:auto}
+h1,h2{margin-top:0}
+.screen{display:none}.screen.active{display:block}
+.card{background:#1d1d1d;border-radius:14px;padding:20px;margin-bottom:15px}
+.subtitle{color:#aaa;line-height:1.5}
+.block-grid{display:grid;gap:12px}
+.block-btn{background:#252525;color:#fff;border:1px solid #444;border-radius:14px;padding:20px;text-align:left;cursor:pointer}
+.block-btn:hover{background:#303030}
+.block-title{font-size:22px;font-weight:bold;margin-bottom:7px}
+.block-info{color:#aaa;font-size:14px}
+.back{background:#555;color:#fff;border:0;border-radius:9px;padding:11px 15px;font-size:16px;cursor:pointer;margin-bottom:15px}
+#phase{text-align:center;font-size:20px;color:#aaa;margin-bottom:8px}
+#exercise{text-align:center;font-size:clamp(30px,8vw,48px);font-weight:bold;min-height:58px}
+#timer{text-align:center;font-size:clamp(72px,20vw,110px);font-weight:bold;font-variant-numeric:tabular-nums;margin:10px 0}
+#next,#round{text-align:center;color:#aaa;margin-bottom:8px}
+.buttons{display:flex;gap:8px;margin-top:20px}
+button{font-size:18px;padding:14px 10px;border-radius:10px;border:none;cursor:pointer;min-height:48px}
+button:disabled{opacity:.45;cursor:default}
+#start{background:#4caf50;color:#fff}#pause{background:#ff9800;color:#fff}#reset{background:#555;color:#fff}
+.nav-buttons{display:flex;gap:10px;margin-top:15px}.nav-buttons button{flex:1;background:#333;color:#fff}
+.settings{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+label{color:#aaa;font-size:14px;display:block}
+input,textarea{width:100%;margin-top:6px;padding:11px;border-radius:8px;border:1px solid #444;background:#111;color:#fff;font-size:16px}
+textarea{min-height:130px;resize:vertical;line-height:1.5}
+.hint{color:#888;font-size:13px;margin-top:8px;line-height:1.4}
+.exercise-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.exercise-row input{margin:0;flex:1}
+.exercise-row button{background:#333;color:#fff;padding:8px 11px;min-height:44px}
+.exercise-row .delete{color:#ff8a80}
+.block-editor{border:1px solid #333;border-radius:12px;padding:15px;margin-bottom:12px}
+.block-editor-head{display:flex;gap:8px;align-items:center;margin-bottom:12px}
+.block-editor-head input{margin:0;font-weight:bold}
+.small-btn{background:#333;color:#fff;padding:8px 11px;font-size:15px;min-height:42px}
+.danger{background:#4a2020;color:#ffb0b0}
+.add{width:100%;background:#333;color:#fff}
+#message{text-align:center;color:#aaa;min-height:20px;margin-top:10px}
+@media(max-width:500px){.settings{grid-template-columns:1fr}.block-editor-head{flex-wrap:wrap}.block-editor-head input{width:100%}}
+</style>
+
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#111111">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Training">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+
+</head>
+<body>
+<div class="container">
+
+<section id="home" class="screen active">
+<div class="card">
+<h1>Training</h1>
+<p class="subtitle">Wähle deinen Trainingsblock. Jeder Block läuft mit der eingestellten Belastungs- und Pausenzeit automatisch durch.</p>
+</div>
+<div id="blockSelection" class="block-grid"></div>
+<div class="card">
+<button id="manageBtn" class="add">Übungsblöcke bearbeiten</button>
+</div>
+</section>
+
+<section id="timerScreen" class="screen">
+<button class="back" id="timerBack">← Zur Auswahl</button>
+<div class="card">
+<div id="selectedBlock" class="subtitle"></div>
+<div id="phase">BEREIT</div>
+<div id="exercise">Training</div>
+<div id="timer">01:00</div>
+<div id="round"></div>
+<div id="next">Nächste Übung: –</div>
+<div class="nav-buttons">
+<button id="prevExercise">← Übung zurück</button>
+<button id="nextExercise">Übung weiter →</button>
+</div>
+<div class="buttons">
+<button id="start">START</button>
+<button id="pause" disabled>PAUSE</button>
+<button id="reset">RESET</button>
+</div>
+<div id="message"></div>
+</div>
+<div class="card">
+<h2>Timer</h2>
+<div class="settings">
+<label>Belastung (Sek.)<input id="workTime" type="number" min="1" max="3600" value="60"></label>
+<label>Pause (Sek.)<input id="restTime" type="number" min="0" max="600" value="7"></label>
+<label>Runden<input id="rounds" type="number" min="1" max="100" value="1"></label>
+</div>
+</div>
+</section>
+
+<section id="manageScreen" class="screen">
+<button class="back" id="manageBack">← Zur Hauptseite</button>
+<div class="card">
+<h1>Übungsblöcke bearbeiten</h1>
+<p class="subtitle">Blöcke und Übungen lassen sich umbenennen, hinzufügen, löschen und mit ↑ ↓ verschieben. Änderungen werden lokal im Browser gespeichert.</p>
+</div>
+<div id="editBlocks"></div>
+<button id="addBlock" class="add">+ Übungsblock hinzufügen</button>
+</section>
+
+</div>
+
+<script>
+const defaultBlocks = [
+    {
+        name:"A – Mobilität & Oberkörper",
+        exercises:[
+            "Arme Pendeln",
+            "Body Waves",
+            "Vorwärts Armkreisen",
+            "Oberkörpertwists",
+            "Rückwärts Armkreisen",
+            "Arme seitlich schwingen",
+            "Golfschwünge beide Arme",
+            "Liegestütze",
+            "Tote Arme",
+            "Zehenspitzen Body Wave"
+        ]
+    },
+    {
+        name:"B – Beine & Gleichgewicht",
+        exercises:[
+            "Lymphatische Hopps",
+            "Marches",
+            "Squats",
+            "Zehenspitzen Body Wave",
+            "Klatschen mit Schritt zurück",
+            "Ballett Squats",
+            "Einbeinstand (nach 30s wechseln)",
+            "Rückwärts-Ausfallschritte",
+            "Kniebeuge",
+            "Rückwärtsschritt Body Wave"
+        ]
+    },
+    {
+        name:"C – Ganzkörper & Flow",
+        exercises:[
+            "Lymphatische Hopps",
+            "Body Waves",
+            "Marches",
+            "Oberkörpertwists",
+            "Squats",
+            "Golfschwünge beide Arme",
+            "Good Mornings / Hip Hinge",
+            "Klatschen mit Schritt zurück",
+            "Liegestütze",
+            "Tote Arme",
+            "Zehenspitzen Body Wave",
+            "Arme seitlich schwingen"
+        ]
+    }
+];
+
+const STORAGE_KEY="training_timer_blocks_v1";
+let blocks = JSON.parse(JSON.stringify(defaultBlocks));
+
+function saveBlocks(){
+    try{localStorage.setItem(STORAGE_KEY,JSON.stringify(blocks));}catch(e){}
+}
+function loadBlocks(){
+    try{
+        const saved=localStorage.getItem(STORAGE_KEY);
+        if(saved){
+            const parsed=JSON.parse(saved);
+            if(Array.isArray(parsed)&&parsed.length){blocks=parsed;return;}
+        }
+    }catch(e){}
+}
+loadBlocks();
+
+const screens={
+    home:document.getElementById("home"),
+    timer:document.getElementById("timerScreen"),
+    manage:document.getElementById("manageScreen")
+};
+function showScreen(name){
+    Object.values(screens).forEach(s=>s.classList.remove("active"));
+    screens[name].classList.add("active");
+}
+document.getElementById("manageBtn").onclick=()=>{renderEditor();showScreen("manage");};
+document.getElementById("manageBack").onclick=()=>showScreen("home");
+document.getElementById("timerBack").onclick=()=>{resetTraining();showScreen("home");};
+
+function renderBlockSelection(){
+    const container=document.getElementById("blockSelection");
+    container.innerHTML="";
+    blocks.forEach((block,index)=>{
+        const button=document.createElement("button");
+        button.className="block-btn";
+        const title=document.createElement("div");
+        title.className="block-title";
+        title.textContent=block.name;
+        const info=document.createElement("div");
+        info.className="block-info";
+        info.textContent=block.exercises.length+" Übungen";
+        button.append(title,info);
+        button.onclick=()=>selectBlock(index);
+        container.appendChild(button);
+    });
+}
+
+let selectedBlockIndex=0, exercises=[], workTime=60, restTime=7, totalRounds=1;
+let currentExercise=0, currentRound=1, remaining=60, phase="work", running=false, timer=null;
+
+const phaseElement=document.getElementById("phase");
+const exerciseElement=document.getElementById("exercise");
+const timerElement=document.getElementById("timer");
+const roundElement=document.getElementById("round");
+const nextElement=document.getElementById("next");
+const messageElement=document.getElementById("message");
+const selectedBlockElement=document.getElementById("selectedBlock");
+const startButton=document.getElementById("start");
+const pauseButton=document.getElementById("pause");
+const resetButton=document.getElementById("reset");
+const prevButton=document.getElementById("prevExercise");
+const nextButton=document.getElementById("nextExercise");
+
+function readTimerSettings(){
+    workTime=Math.max(1,parseInt(document.getElementById("workTime").value)||60);
+    restTime=Math.max(0,parseInt(document.getElementById("restTime").value)||0);
+    totalRounds=Math.max(1,parseInt(document.getElementById("rounds").value)||1);
+}
+function selectBlock(index){
+    selectedBlockIndex=index;
+    exercises=[...blocks[index].exercises];
+    readTimerSettings();
+    currentExercise=0;currentRound=1;phase="work";remaining=workTime;
+    selectedBlockElement.textContent=blocks[index].name;
+    updateDisplay();showScreen("timer");
+}
+function formatTime(seconds){
+    return String(Math.floor(seconds/60)).padStart(2,"0")+":"+String(seconds%60).padStart(2,"0");
+}
+function updateDisplay(){
+    timerElement.textContent=formatTime(remaining);
+    if(phase==="work"){
+        phaseElement.textContent="ARBEIT";
+        exerciseElement.textContent=exercises[currentExercise]||"Training";
+        roundElement.textContent="Runde "+currentRound+" / "+totalRounds;
+        if(currentExercise<exercises.length-1)nextElement.textContent="Nächste Übung: "+exercises[currentExercise+1];
+        else if(currentRound<totalRounds)nextElement.textContent="Danach: Runde "+(currentRound+1);
+        else nextElement.textContent="Letzte Übung";
+    }else if(phase==="rest"){
+        phaseElement.textContent="PAUSE";
+        exerciseElement.textContent="Erholen";
+        roundElement.textContent="Runde "+currentRound+" / "+totalRounds;
+        if(currentExercise<exercises.length-1)nextElement.textContent="Als Nächstes: "+exercises[currentExercise+1];
+        else nextElement.textContent="Danach beginnt Runde "+(currentRound+1);
+    }else{
+        phaseElement.textContent="FERTIG";
+        exerciseElement.textContent="Training geschafft!";
+        roundElement.textContent=totalRounds+" "+(totalRounds===1?"Runde":"Runden");
+        nextElement.textContent="";
+    }
+}
+function melody(){
+    try{
+        const AC=window.AudioContext||window.webkitAudioContext;
+        const ctx=new AC();
+        if(ctx.state==="suspended")ctx.resume();
+        [
+            {f:523.25,t:0,d:.28},{f:659.25,t:.32,d:.28},
+            {f:783.99,t:.64,d:.38},{f:659.25,t:1.08,d:.45}
+        ].forEach(n=>{
+            const o=ctx.createOscillator(),g=ctx.createGain();
+            o.type="sine";o.frequency.value=n.f;o.connect(g);g.connect(ctx.destination);
+            const t=ctx.currentTime+n.t;
+            g.gain.setValueAtTime(.001,t);
+            g.gain.linearRampToValueAtTime(.10,t+.04);
+            g.gain.setValueAtTime(.10,t+n.d-.08);
+            g.gain.exponentialRampToValueAtTime(.001,t+n.d);
+            o.start(t);o.stop(t+n.d+.02);
+        });
+    }catch(e){}
+}
+function tick(){
+    remaining--;
+    if(remaining>0){updateDisplay();return;}
+    if(phase==="work"){
+        melody();
+        if(currentExercise===exercises.length-1&&currentRound===totalRounds){finishTraining();return;}
+        if(restTime>0){phase="rest";remaining=restTime;}
+        else{advanceToNextExercise();return;}
+    }else{advanceToNextExercise();return;}
+    updateDisplay();
+}
+function advanceToNextExercise(){
+    currentExercise++;
+    if(currentExercise>=exercises.length){currentExercise=0;currentRound++;}
+    phase="work";remaining=workTime;updateDisplay();
+}
+function startTraining(){
+    if(running)return;
+    readTimerSettings();
+    if(!exercises.length){messageElement.textContent="Dieser Block enthält keine Übungen.";return;}
+    if(phase==="finished"){currentExercise=0;currentRound=1;phase="work";remaining=workTime;}
+    running=true;startButton.disabled=true;pauseButton.disabled=false;
+    prevButton.disabled=true;nextButton.disabled=true;messageElement.textContent="";
+    updateDisplay();timer=setInterval(tick,1000);
+}
+function pauseTraining(){
+    if(!running)return;
+    running=false;clearInterval(timer);
+    startButton.disabled=false;pauseButton.disabled=true;
+    prevButton.disabled=false;nextButton.disabled=false;
+    phaseElement.textContent="PAUSIERT";
+}
+function resetTraining(){
+    clearInterval(timer);running=false;readTimerSettings();
+    currentExercise=0;currentRound=1;phase="work";remaining=workTime;
+    startButton.disabled=false;pauseButton.disabled=true;
+    prevButton.disabled=false;nextButton.disabled=false;messageElement.textContent="";
+    updateDisplay();
+}
+function finishTraining(){
+    clearInterval(timer);running=false;phase="finished";remaining=0;
+    startButton.disabled=false;pauseButton.disabled=true;
+    prevButton.disabled=false;nextButton.disabled=false;melody();updateDisplay();
+}
+function manualMove(direction){
+    if(running||!exercises.length)return;
+    if(direction<0){
+        if(currentExercise>0)currentExercise--;
+        else if(currentRound>1){currentRound--;currentExercise=exercises.length-1;}
+    }else{
+        if(currentExercise<exercises.length-1)currentExercise++;
+        else if(currentRound<totalRounds){currentRound++;currentExercise=0;}
+    }
+    phase="work";remaining=workTime;messageElement.textContent="";updateDisplay();
+}
+prevButton.onclick=()=>manualMove(-1);
+nextButton.onclick=()=>manualMove(1);
+["workTime","restTime","rounds"].forEach(id=>{
+    document.getElementById(id).addEventListener("change",()=>{if(!running)resetTraining();});
+});
+startButton.onclick=startTraining;
+pauseButton.onclick=pauseTraining;
+resetButton.onclick=resetTraining;
+
+function renderEditor(){
+    const container=document.getElementById("editBlocks");
+    container.innerHTML="";
+    blocks.forEach((block,bi)=>{
+        const card=document.createElement("div");card.className="block-editor";
+        const head=document.createElement("div");head.className="block-editor-head";
+        const name=document.createElement("input");name.value=block.name;
+        name.addEventListener("change",()=>{blocks[bi].name=name.value.trim()||"Übungsblock";saveBlocks();renderBlockSelection();});
+        const up=document.createElement("button");up.className="small-btn";up.textContent="↑";up.disabled=bi===0;
+        up.onclick=()=>{[blocks[bi-1],blocks[bi]]=[blocks[bi],blocks[bi-1]];saveBlocks();renderEditor();renderBlockSelection();};
+        const down=document.createElement("button");down.className="small-btn";down.textContent="↓";down.disabled=bi===blocks.length-1;
+        down.onclick=()=>{[blocks[bi],blocks[bi+1]]=[blocks[bi+1],blocks[bi]];saveBlocks();renderEditor();renderBlockSelection();};
+        const del=document.createElement("button");del.className="small-btn danger";del.textContent="Löschen";
+        del.onclick=()=>{if(blocks.length<=1){alert("Mindestens ein Übungsblock muss vorhanden sein.");return;}if(confirm("Diesen Übungsblock wirklich löschen?")){blocks.splice(bi,1);saveBlocks();renderEditor();renderBlockSelection();}};
+        head.append(name,up,down,del);card.appendChild(head);
+
+        block.exercises.forEach((exercise,ei)=>{
+            const row=document.createElement("div");row.className="exercise-row";
+            const input=document.createElement("input");input.value=exercise;
+            input.addEventListener("change",()=>{blocks[bi].exercises[ei]=input.value.trim()||"Übung";saveBlocks();renderBlockSelection();});
+            const eu=document.createElement("button");eu.className="small-btn";eu.textContent="↑";eu.disabled=ei===0;
+            eu.onclick=()=>{[blocks[bi].exercises[ei-1],blocks[bi].exercises[ei]]=[blocks[bi].exercises[ei],blocks[bi].exercises[ei-1]];saveBlocks();renderEditor();};
+            const ed=document.createElement("button");ed.className="small-btn";ed.textContent="↓";ed.disabled=ei===block.exercises.length-1;
+            ed.onclick=()=>{[blocks[bi].exercises[ei],blocks[bi].exercises[ei+1]]=[blocks[bi].exercises[ei+1],blocks[bi].exercises[ei]];saveBlocks();renderEditor();};
+            const er=document.createElement("button");er.className="small-btn delete";er.textContent="×";
+            er.onclick=()=>{if(block.exercises.length<=1){alert("Ein Block muss mindestens eine Übung enthalten.");return;}block.exercises.splice(ei,1);saveBlocks();renderEditor();renderBlockSelection();};
+            row.append(input,eu,ed,er);card.appendChild(row);
+        });
+
+        const add=document.createElement("button");add.className="small-btn";add.textContent="+ Übung";
+        add.onclick=()=>{blocks[bi].exercises.push("Neue Übung");saveBlocks();renderEditor();};
+        card.appendChild(add);container.appendChild(card);
+    });
+}
+document.getElementById("addBlock").onclick=()=>{
+    blocks.push({name:"Neuer Übungsblock",exercises:["Neue Übung"]});
+    saveBlocks();renderEditor();renderBlockSelection();
+};
+
+renderBlockSelection();
+</script>
+
+<script>
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js").catch(() => {});
+    });
+}
+</script>
+
+</body>
+</html>
