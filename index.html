@@ -44,15 +44,10 @@ textarea{min-height:130px;resize:vertical;line-height:1.5}
 .add{width:100%;background:#333;color:#fff}
 #message{text-align:center;color:#aaa;min-height:20px;margin-top:10px}
 @media(max-width:500px){.settings{grid-template-columns:1fr}.block-editor-head{flex-wrap:wrap}.block-editor-head input{width:100%}}
+
+/* Version 2 */
+.training-info-v2,.progress-meta-v2{display:flex;justify-content:space-between;gap:12px;font-size:.9rem;opacity:.78}.training-info-v2{margin:8px 0 12px}.progress-v2{margin:16px 0}.progress-meta-v2{margin-bottom:7px}.progress-track-v2{height:12px;border-radius:999px;background:rgba(127,127,127,.18);overflow:hidden}.progress-track-v2>div{height:100%;width:0;border-radius:999px;background:currentColor;transition:width .25s ease}.next-v2{margin:14px 0;padding:15px 17px;border-radius:16px;background:rgba(127,127,127,.10);text-align:left}.next-label-v2{font-size:.75rem;letter-spacing:.08em;opacity:.6;margin-bottom:4px}.next-v2 #nextV2{font-size:1.08rem;font-weight:700}.finish-v2{text-align:center;padding:25px 10px}.finish-check{font-size:4rem;line-height:1}.finish-v2 h2{font-size:2rem;margin:10px 0}.finish-v2 p{opacity:.75}.finish-v2 button{display:block;width:100%;min-height:58px;margin:10px 0;border-radius:17px;font-size:1.05rem}.secondary-v2{opacity:.8}@media(max-width:600px){#timer{font-size:clamp(4.5rem,18vw,8rem);font-weight:800;letter-spacing:-.05em}.buttons button,.nav-buttons button{min-height:60px!important;font-size:1.05rem!important;border-radius:17px!important}}
 </style>
-
-<link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#111111">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Training">
-<link rel="apple-touch-icon" href="icons/icon-180.png">
-
 </head>
 <body>
 <div class="container">
@@ -74,7 +69,10 @@ textarea{min-height:130px;resize:vertical;line-height:1.5}
 <div id="selectedBlock" class="subtitle"></div>
 <div id="phase">BEREIT</div>
 <div id="exercise">Training</div>
+<div class="training-info-v2"><span id="blockInfoV2"></span><span id="durationV2"></span></div>
 <div id="timer">01:00</div>
+<div class="progress-v2"><div class="progress-meta-v2"><span id="countV2">1 von 1 Übungen</span><span id="percentV2">0 %</span></div><div class="progress-track-v2"><div id="progressV2"></div></div></div>
+<div class="next-v2"><div class="next-label-v2">NÄCHSTE ÜBUNG</div><div id="nextV2">–</div></div>
 <div id="round"></div>
 <div id="next">Nächste Übung: –</div>
 <div class="nav-buttons">
@@ -86,7 +84,7 @@ textarea{min-height:130px;resize:vertical;line-height:1.5}
 <button id="pause" disabled>PAUSE</button>
 <button id="reset">RESET</button>
 </div>
-<div id="message"></div>
+<div id="message"></div><div id="finishV2" class="finish-v2" hidden><div class="finish-check">✓</div><h2>Training geschafft!</h2><p id="finishTextV2"></p><button id="finishAgainV2">Nochmal trainieren</button><button id="finishHomeV2" class="secondary-v2">Zur Auswahl</button></div>
 </div>
 <div class="card">
 <h2>Timer</h2>
@@ -231,6 +229,7 @@ function readTimerSettings(){
     totalRounds=Math.max(1,parseInt(document.getElementById("rounds").value)||1);
 }
 function selectBlock(index){
+    document.getElementById("finishV2").hidden=true;
     selectedBlockIndex=index;
     exercises=[...blocks[index].exercises];
     readTimerSettings();
@@ -243,6 +242,16 @@ function formatTime(seconds){
 }
 function updateDisplay(){
     timerElement.textContent=formatTime(remaining);
+    const blockInfoV2=document.getElementById("blockInfoV2");
+    const durationV2=document.getElementById("durationV2");
+    const countV2=document.getElementById("countV2");
+    const percentV2=document.getElementById("percentV2");
+    const progressV2=document.getElementById("progressV2");
+    const nextV2=document.getElementById("nextV2");
+    if(blockInfoV2) blockInfoV2.textContent=blocks[selectedBlockIndex].name;
+    if(durationV2){ const totalSec=(exercises.length*workTime+Math.max(0,exercises.length-1)*restTime)*totalRounds; durationV2.textContent="Gesamt " + Math.floor(totalSec/60)+":"+String(totalSec%60).padStart(2,"0")+" min"; }
+    if(countV2){ const current=(currentRound-1)*exercises.length+currentExercise+1; const total=exercises.length*totalRounds; countV2.textContent=current+" von "+total+" Übungen"; const pct=Math.round(current/total*100); if(percentV2)percentV2.textContent=pct+" %"; if(progressV2)progressV2.style.width=pct+"%"; }
+    if(nextV2){ if(currentExercise<exercises.length-1) nextV2.textContent=exercises[currentExercise+1]; else if(currentRound<totalRounds) nextV2.textContent="Runde "+(currentRound+1)+" · "+exercises[0]; else nextV2.textContent="Letzte Übung"; }
     if(phase==="work"){
         phaseElement.textContent="ARBEIT";
         exerciseElement.textContent=exercises[currentExercise]||"Training";
@@ -326,6 +335,9 @@ function finishTraining(){
     clearInterval(timer);running=false;phase="finished";remaining=0;
     startButton.disabled=false;pauseButton.disabled=true;
     prevButton.disabled=false;nextButton.disabled=false;melody();updateDisplay();
+    const panel=document.getElementById("finishV2");
+    panel.hidden=false;
+    document.getElementById("finishTextV2").textContent=blocks[selectedBlockIndex].name+" · "+exercises.length+" Übungen · "+Math.floor(((exercises.length*workTime+Math.max(0,exercises.length-1)*restTime)*totalRounds)/60)+":"+String(((exercises.length*workTime+Math.max(0,exercises.length-1)*restTime)*totalRounds)%60).padStart(2,"0")+" min";
 }
 function manualMove(direction){
     if(running||!exercises.length)return;
@@ -345,7 +357,9 @@ nextButton.onclick=()=>manualMove(1);
 });
 startButton.onclick=startTraining;
 pauseButton.onclick=pauseTraining;
-resetButton.onclick=resetTraining;
+resetButton.onclick=()=>{document.getElementById("finishV2").hidden=true;resetTraining();};
+document.getElementById("finishAgainV2").onclick=()=>{document.getElementById("finishV2").hidden=true;resetTraining();startTraining();};
+document.getElementById("finishHomeV2").onclick=()=>{document.getElementById("finishV2").hidden=true;resetTraining();showScreen("home");};
 
 function renderEditor(){
     const container=document.getElementById("editBlocks");
@@ -388,14 +402,5 @@ document.getElementById("addBlock").onclick=()=>{
 
 renderBlockSelection();
 </script>
-
-<script>
-if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./sw.js").catch(() => {});
-    });
-}
-</script>
-
 </body>
 </html>
